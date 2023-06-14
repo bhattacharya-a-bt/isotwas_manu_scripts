@@ -247,18 +247,6 @@ for (tr in traits){
         pips = exp(pips - marginal)
         null_res = exp(null_res - marginal)
         this.res$pip = pips
-        if (any(c('AKT3',
-                  'SFMBT1',
-                  'GIGYF2',
-                  'KMT5A') %in% this.res$HGNC)){
-          
-          www = which(this.res$HGNC %in% c('AKT3',
-                                           'SFMBT1',
-                                           'GIGYF2',
-                                           'KMT5A'))
-          this.res$pip[www] = runif(length(www),.95,1)
-          
-        }
         this.res = this.res[order(this.res$pip,decreasing = T),]
         npost = this.res$pip/sum(this.res$pip)
         csum = cumsum(npost)
