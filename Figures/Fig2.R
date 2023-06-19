@@ -147,8 +147,6 @@ for (ss in as.numeric(unique(params$n.qtl))){
 
 
 
-
-
 require(ggplot2)
 require(data.table)
 require(vroom)
@@ -162,8 +160,10 @@ colnames(method_diff_melt)[12:13] = c('Method','R2')
 method_diff_melt$Method = as.factor(method_diff_melt$Method)
 levels(method_diff_melt$Method) =  c('MRCE','Multivariate elastic net',
                                      'Best univariate','SPLS','joinet')
-method_diff_melt$Method = relevel(method_diff_melt$Method,
-                                  ref = 'Best univariate')
+method_diff_melt$Method = factor(method_diff_melt$Method,
+                                  levels = c('Best univariate',
+                                          'Multivariate elastic net',
+                                          'SPLS','MRCE','joinet'))
 
 
 
@@ -216,7 +216,7 @@ overallboxr2 = ggplot(data = params_r2,
         legend.key.size = unit(0.2, "cm")) +
   ylab(expression('CV'~R^2)) +
   xlab(expression(p[shared])) +
-  scale_color_brewer(palette = 'Dark2')
+  scale_fill_brewer(palette = 'Dark2')
 
 
 
