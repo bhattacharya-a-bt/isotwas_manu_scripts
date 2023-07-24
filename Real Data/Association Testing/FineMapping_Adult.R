@@ -32,7 +32,8 @@ for (tr in traits){
   res$Tissue = 'AdultBB'
   res$GTA = paste(res$Gene,res$Tissue,sep=':')
   res$TTA = paste(res$Transcript,res$Tissue,sep=':')
-  
+
+  ### FIND OVERLAPPING LOCI
   chr.table = table(res$Chromosome)
   chr.un = unique(res$Chromosome)
   keep.gta = c()
@@ -51,7 +52,8 @@ for (tr in traits){
       }
     }
   }
-  
+
+  ### WRITE OUT NON-OVERLAPPING LOCI
   new_res = subset(res,!TTA %in% keep.tta)
   if (nrow(new_res) > 0){
   new_res$pip = 1
@@ -76,7 +78,8 @@ for (tr in traits){
   
   res = subset(res,TTA %in% keep.tta)
   res$Overlap = 'Yes'
-  
+
+  ### LOOP THROUGH CHROMOSOMES
   chr.un = unique(res$Chromosome)
   if (length(chr.un) >= 1){
     for (c in chr.un[1:length(chr.un)]){
@@ -90,6 +93,8 @@ for (tr in traits){
           this.res.tot$Group[(i+1):nrow(this.res.tot)] = ggg
         }
       }
+
+      ### LOOP THROUGH OVERLAPPING GROUPS/LOCI
       for (gr in unique(this.res.tot$Group)){
         print(gr)
         this.res = subset(this.res.tot,
@@ -99,6 +104,8 @@ for (tr in traits){
         pos = c()
         gene = c()
         snp.chr = c()
+
+        ### COLLECT WEIGHTS FOR SNPS IN THE MODELS
         for (i in 1:nrow(this.res)){
           aaa = readRDS(paste0('out_models_041923/AdultBB/isoTWAS/',
                                this.res$Gene[i],
@@ -151,7 +158,8 @@ for (tr in traits){
         
         min = max(c(1,min(pos)-1e6))
         max = max(pos)+1e6
-        
+
+        ### GET LD MATRIX FOR ALL SNPS
         system(paste0('plink ',
                       ' --bfile BigBrain_renormalized/BB_hmp_forQTL',
                       ' --chr ',c,
@@ -177,13 +185,19 @@ for (tr in traits){
         
         zscores = this.res$Z
         m = length(zscores)
+
+        ### COMPUTE LD BETWEEN TX ON THE GENETIC LEVEL
         wcor = estimate_cor(as.matrix(Omega),
                             as.matrix(V),intercept=T)[[1]]
         diag(wcor) = 1
         wcor[is.na(wcor)] = 0
+
+        
+        ### COMPUTE LD INTERCEPT BETWEEN TX ON THE GENETIC LEVEL
         swld = estimate_cor(as.matrix(Omega),
                             as.matrix(V),
                             intercept=T)[[2]]
+        
         null_res = m * log(1 - 1e-3)
         marginal = m * log(1 - 1e-3)
         comb_list = list()
@@ -192,7 +206,11 @@ for (tr in traits){
                         combn(1:length(zscores),n,simplify=F))
         }
         pips = rep(0,length(zscores))
+
+        ### RESIDUALIZE Z-SCORES TO APPROX REMOVE NON-CENTRALITY
         zscores = get_resid(zscores,as.matrix(swld),as.matrix(wcor))[[1]]
+
+        ### COMPUTE BAYES FACTORS/LIKELIHOOD AT EACH CAUSAL CONFIG
         for (j in 1:length(comb_list)){
           subset = comb_list[[j]]
           local = bayes_factor(zscores,
@@ -209,7 +227,8 @@ for (tr in traits){
           # print(pips)
           # print(marginal)
         }
-        
+
+        ### WHILE LOOP FOR 2/1 CAUSAL ISOFORMS IF NEEDED
         iter=2
         while (any(pips == Inf) & iter >= 1){
           
@@ -258,7 +277,8 @@ for (tr in traits){
           }
           
         }
-        
+
+        ### WRITE OUT PIPS AND CREDIBLE SETS
         this.res = this.res[,c('Trait',
                                'Gene','HGNC',
                                'Transcript','Chromosome',
