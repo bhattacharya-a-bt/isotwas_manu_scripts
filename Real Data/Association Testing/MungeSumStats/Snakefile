@@ -1,0 +1,113 @@
+################
+### PREAMBLE ###
+################
+
+
+### CREATED BY MICHAEL MARGOLIS
+
+configfile: "/u/project/gandalm/margolis/alexandria/pipelines/munge_snake/config/config.yaml"
+#report: "absolute/path/to/snakemake/workflow/report/worfklow.rst"
+
+GWAS,POPS,STATS = glob_wildcards("01-reheadered-sumstats/{GWAS}.{POP}.{STAT}.reheader.gz")
+HM3 = ["hm3_filter", "no_hm3_filter"]
+
+#############
+### RULES ###
+#############
+
+rule all:
+    input:
+        expand("03-magma-hm3-and-nohm3-sumstats/{gwas}.{hm3}.magma.sumstats", gwas = GWAS, hm3 = HM3)
+
+rule ldsc_to_magma:
+    input:
+        "02-ldsc-hm3-and-nohm3-sumstats/{gwas}.{hm3}.sumstats.gz",
+    output:
+        "03-magma-hm3-and-nohm3-sumstats/{gwas}.{hm3}.magma.sumstats",
+    envmodules:
+        "python/3.9.6"
+    resources:
+        mem_mb=8192,
+        runtime="00:30:00"
+    shell:
+        """
+        python -u {config[LDSC_TO_MAGMA]} {input} {output}
+        """
+
+def get_gwas(wildcards):
+    idx = GWAS.index(wildcards.gwas)
+    return f"01-reheadered-sumstats/{GWAS[idx]}.{POPS[idx]}.{STATS[idx]}.reheader.gz"
+
+def get_stat(wildcards):
+    idx = GWAS.index(wildcards.gwas)
+    stat = STATS[idx]
+
+    if stat == 'Z':
+        stat = stat + ",0"
+    elif stat == 'OR':
+        stat = stat + ",1"
+    elif stat == 'BETA':
+        stat = stat + ",0"
+    elif stat == 'LOG_ODDS':
+        stat = stat + ",0"
+
+    return stat
+
+rule reheader_to_ldsc_filter:
+    input:
+        get_gwas
+    output:
+        "02-ldsc-hm3-and-nohm3-sumstats/{gwas}.hm3_filter.sumstats.gz"
+    conda:
+        "envs/ldsc.yaml"
+    params:
+        stat = get_stat
+    resources:
+        mem_mb=4096,
+        runtime="00:30:00"
+    shell:
+        """
+        python {config[MUNGE_SUMSTAT]} \\
+            --sumstats {input} \\
+            --merge-alleles {config[HM3_SNPS]} \\
+            --out 02-ldsc-hm3-and-nohm3-sumstats/{wildcards.gwas}.hm3_filter \\
+            --signed-sumstats {params.stat} \\
+            --chunksize 500000
+
+        sleep 10
+
+        zcat {output[0]} | grep -e 'rs[0-9]*[[:blank:]]*[A-Z]' -e 'SNP' > 02-ldsc-hm3-and-nohm3-sumstats/{wildcards.gwas}.hm3_filter.sumstats
+        gzip -f 02-ldsc-hm3-and-nohm3-sumstats/{wildcards.gwas}.hm3_filter.sumstats
+        mv 02-ldsc-hm3-and-nohm3-sumstats/{wildcards.gwas}.hm3_filter.log 02-ldsc-hm3-and-nohm3-sumstats/z_{wildcards.gwas}.hm3_filter.log
+        
+        sleep 2m
+        """
+
+rule reheader_to_ldsc_nofilter:
+    input:
+        get_gwas
+    output:
+        "02-ldsc-hm3-and-nohm3-sumstats/{gwas}.no_hm3_filter.sumstats.gz"
+    conda:
+        "envs/ldsc.yaml"
+    params:
+        stat = get_stat
+    resources:
+        mem_mb=4096,
+        runtime="00:30:00"
+    shell:
+        """
+        python {config[MUNGE_SUMSTAT]} \\
+            --sumstats {input} \\
+            --out 02-ldsc-hm3-and-nohm3-sumstats/{wildcards.gwas}.no_hm3_filter \\
+            --signed-sumstats {params.stat} \\
+            --chunksize 500000
+        
+        sleep 10
+
+        zcat {output[0]} | grep -e 'rs[0-9]*[[:blank:]]*[A-Z]' -e 'SNP' > 02-ldsc-hm3-and-nohm3-sumstats/{wildcards.gwas}.no_hm3_filter.sumstats
+        gzip -f 02-ldsc-hm3-and-nohm3-sumstats/{wildcards.gwas}.no_hm3_filter.sumstats
+        mv 02-ldsc-hm3-and-nohm3-sumstats/{wildcards.gwas}.no_hm3_filter.log 02-ldsc-hm3-and-nohm3-sumstats/z_{wildcards.gwas}.no_hm3_filter.log
+
+        sleep 2m
+        """
