@@ -544,11 +544,18 @@ for (tr in traits[11:12]){
         this.res$in_cred_set = F
         for (i in 1:nrow(this.res)){
           this.res$in_cred_set[i] = T
-          if (csum[i] > .9 & i > 1){
-            this.res$in_cred_set[i] = F
+          if (i > 1){
+              if (csum[i] > .9 & csum[i-1] < .9){
+                    this.res$in_cred_set[i] = T
+                  }
+              if (csum[i] < .9){
+                    this.res$in_cred_set[i] = T
+                  }
+              if (csum[i] > .9 & csum[i-1] > .9){
+                    this.res$in_cred_set[i] = F
+                  }
+              }
           }
-          
-        }
         
         this.res$Overlap = 'Yes'
         this.res = this.res[,c('Trait',
