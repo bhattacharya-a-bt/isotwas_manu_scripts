@@ -65,18 +65,6 @@ walker$Dataset = 'Developmental'
 total = rbind(walker)
 total$Method = factor(total$Method,
                       c('splice-TWAS','isoTWAS','Both'))
-total$Number[total$Method == 'isoTWAS' &
-               total$Trait == 'ALZ'] = 2
-total$Number[total$Method == 'isoTWAS' &
-               total$Trait == 'ASD'] = 0
-total$Number[total$Method == 'isoTWAS' &
-               total$Trait == 'BP'] = 0
-total$Number[total$Method == 'isoTWAS' &
-               total$Trait == 'ICV'] = 1
-total$Number[total$Method == 'isoTWAS' &
-               total$Trait == 'SCZ'] = 43
-total$Number[total$Method == 'isoTWAS' &
-               total$Trait == 'CDG'] = 4
 
 total_summary = total %>%
   group_by(Method,Dataset) %>%
